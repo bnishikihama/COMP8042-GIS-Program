@@ -27,9 +27,10 @@ class BufferPool {
 };
 class Logger {
 public:
-    fstream logging;
+    static fstream logging;
 
-    explicit Logger(const string& db, const string& script, const string& log) {
+public:
+    static void logInit(const string& db, const string& script, const string& log) {
         logging.open(log, ios::out);
         if (!logging){
             cout << "Error in opening file: " << log << endl;
@@ -48,11 +49,13 @@ public:
 
     }
 
-    void log() {
-
+public:
+    static void log(const string& line) {
+        logging << line << endl;
     }
 
-    void stop() {
+public:
+    static void stop() {
         // put end of log file stuff here
         time_t now = time(0);
         char* date = ctime(&now);
@@ -61,6 +64,8 @@ public:
         logging.close();
     };
 };
+fstream Logger::logging;
+
 class SystemManager {
 
 };
@@ -73,7 +78,7 @@ public:
     fstream scriptStream;
     fstream dbFile;
 
-    CommandProcessor(const string& db, const string& script, Logger* logger) {
+    CommandProcessor(const string& db, const string& script) {
         scriptFile = script;
         dbFile.open(db, ios::out);
         if (!dbFile) {
@@ -100,7 +105,7 @@ public:
                 //TODO: start logging here
                 if (!line.empty()){
                     //logs line in script
-                    logger->log();
+                    Logger::log(line);
                 }
 
                 // If the line starts with ';' then skip it
@@ -136,9 +141,9 @@ int main(int argc, char* argv[]){
     string script = argv[2];
     string log = argv[3];
 
-    Logger logger(db, script, log);
-    CommandProcessor CommProc(db, script, &logger);
+    Logger::logInit(db, script, log);
+    CommandProcessor CommProc(db, script);
     CommProc.readScript();
-    logger.stop();
+    Logger::stop();
     return 0;
 }

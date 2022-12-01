@@ -1,5 +1,6 @@
 .idea
 cmake-build-debug/
+CMakeLists.txt
 *.7z
 *.dmg
 *.gz
