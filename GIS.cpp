@@ -8,6 +8,7 @@
 #include <vector>
 #include <sstream>
 
+
 using namespace std;
 
 const string divider = "----------------------------------------------------------------------------------";
@@ -28,7 +29,7 @@ class Logger {
 public:
     fstream logging;
 
-    explicit Logger(const string& db, const string& script, const string& log){
+    explicit Logger(const string& db, const string& script, const string& log) {
         logging.open(log, ios::out);
         if (!logging){
             cout << "Error in opening file: " << log << endl;
@@ -47,7 +48,11 @@ public:
 
     }
 
-    void stop(){
+    void log() {
+
+    }
+
+    void stop() {
         // put end of log file stuff here
         time_t now = time(0);
         char* date = ctime(&now);
@@ -68,7 +73,7 @@ public:
     fstream scriptStream;
     fstream dbFile;
 
-    CommandProcessor(const string& db, const string& script) {
+    CommandProcessor(const string& db, const string& script, Logger* logger) {
         scriptFile = script;
         dbFile.open(db, ios::out);
         if (!dbFile) {
@@ -92,6 +97,12 @@ public:
         }
         else {
             while (getline(scriptStream, line)) {
+                //TODO: start logging here
+                if (!line.empty()){
+                    //logs line in script
+                    logger->log();
+                }
+
                 // If the line starts with ';' then skip it
                 if (line[0] == ';' || line.empty())
                     continue;
@@ -126,7 +137,7 @@ int main(int argc, char* argv[]){
     string log = argv[3];
 
     Logger logger(db, script, log);
-    CommandProcessor CommProc(db, script);
+    CommandProcessor CommProc(db, script, &logger);
     CommProc.readScript();
     logger.stop();
     return 0;
