@@ -66,19 +66,105 @@ public:
 };
 fstream Logger::logging;
 
-class SystemManager {
-
+enum Command {
+    world,
+    import,
+    debug,
+    quit,
+    what_is_at,
+    what_is,
+    what_is_in
 };
 
-// Manages retrieving commands from the script file
-// Makes necessary calls to other components to carry out the commands
 class CommandProcessor {
+public:
+    static int westLong;
+    static int eastLong;
+    static int southLat;
+    static int northLat;
+    static vector<string> output;
+
+    static vector<string> getCommand(const string& line){
+        istringstream iss(line);
+        string div;
+        while (getline(iss, div, '\t'))
+            output.push_back(div);
+
+//        for (const auto& i : output) {
+//            cout << i << endl;
+//        }
+        return output;
+    }
+
+    static void world(const vector<string>& line){
+        westLong = (
+                (stoi(line[1].substr(0,3)) * 3600) +
+                (stoi(line[1].substr(3,2))) * 60 +
+                (stoi(line[1].substr(5,2)))
+                );
+        if (line[1][7] == 'W')
+            westLong *= -1;
+
+        eastLong = (
+                (stoi(line[2].substr(0,3)) * 3600) +
+                (stoi(line[2].substr(3,2))) * 60 +
+                (stoi(line[2].substr(5,2)))
+                );
+        if (line[2][7] == 'W')
+            eastLong *= -1;
+
+        southLat = (
+                (stoi(line[3].substr(0,3)) * 3600) +
+                (stoi(line[3].substr(3,2))) * 60 +
+                (stoi(line[3].substr(5,2)))
+                );
+        if (line[3][7] == 'S')
+            southLat *= -1;
+
+        northLat = (
+                (stoi(line[4].substr(0,3)) * 3600) +
+                (stoi(line[4].substr(3,2))) * 60 +
+                (stoi(line[4].substr(5,2)))
+                );
+        if (line[3][7] == 'S')
+            northLat *= -1;
+
+        Logger::log(to_string(westLong));
+    }
+    static string import(const vector<string>& line){
+        return "";
+    }
+    static string debug(const vector<string>& line){
+        return "";
+    }
+    static string quit(const vector<string>& line){
+        return "";
+    }
+    static string what_is_at(const vector<string>& line){
+        return "";
+    }
+    static string what_is(const vector<string>& line){
+        return "";
+    }
+    static string what_is_in(const vector<string>& line){
+        return "";
+    }
+
+};
+int CommandProcessor::westLong;
+int CommandProcessor::eastLong;
+int CommandProcessor::southLat;
+int CommandProcessor::northLat;
+vector<string> CommandProcessor::output;
+
+
+class SystemManager {
 public:
     string scriptFile;
     fstream scriptStream;
     fstream dbFile;
 
-    CommandProcessor(const string& db, const string& script) {
+    SystemManager(const string& db, const string& script) {
         scriptFile = script;
         dbFile.open(db, ios::out);
         if (!dbFile) {
@@ -94,7 +180,7 @@ public:
 
     void readScript(){
         string line;
-        vector<string> output;
+        vector<string> command;
         scriptStream.open(scriptFile, ios::in);
         if (!scriptStream) {
             cout << "Error in opening File: " << scriptFile << endl;
@@ -112,23 +198,31 @@ public:
                 if (line[0] == ';' || line.empty())
                     continue;
 
-                istringstream iss(line);
-                string div;
-                while (getline(iss, div, '\t'))
-                    output.push_back(div);
-
-                for (const auto& i : output) {
-                    cout << i << endl;
-                }
-                output.clear();
+                command = CommandProcessor::getCommand(line);
+                if (command[0] == "world")
+                    CommandProcessor::world(command);
+                else if (command[0] == "import")
+                    CommandProcessor::import(command);
+                else if (command[0] == "debug")
+                    CommandProcessor::debug(command);
+                else if (command[0] == "quit")
+                    CommandProcessor::quit(command);
+                else if (command[0] == "what_is_at")
+                    CommandProcessor::what_is_at(command);
+                else if (command[0] == "what_is")
+                    CommandProcessor::what_is(command);
+                else if (command[0] == "what_is_in")
+                    CommandProcessor::what_is_in(command);
+                else
+                    Logger::log("Command not found error");
             }
         }
         scriptStream.close();
     }
 };
-enum Command {
 
-};
+
+
 struct DMS {
 
 };
@@ -142,8 +236,8 @@ int main(int argc, char* argv[]){
     string log = argv[3];
 
     Logger::logInit(db, script, log);
-    CommandProcessor CommProc(db, script);
-    CommProc.readScript();
+    SystemManager system(db, script);
+    system.readScript();
     Logger::stop();
     return 0;
 }
