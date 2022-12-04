@@ -67,16 +67,79 @@ class NameIndex {
 class CoordinateIndex {
 
 };
-
-class QuadTree {
+struct Point {
+    int lon;
+    int lat;
+    Point(int _lon, int _lat) {lon = _lon; lat = _lat;}
+    Point() {lon = 0; lat = 0;}
+};
 
 struct Node{
+    // its children. none or 4
     vector<Node> children;
-    vector<int> values;
-    int x;
-    int y;
-    Node() {}
+    // offset on file here, duplicates here too
+    vector<int> offsets;
+    Point pos;
+    explicit Node(Point position) {pos = position;}
 };
+
+class QuadTree {
+    Node* root;
+    int boundLongW, boundLongE, boundLatN, boundLatS;
+    const int max_node = 4;
+    QuadTree* NW;
+    QuadTree* NE;
+    QuadTree* SW;
+    QuadTree* SE;
+
+public:
+    QuadTree(int longW, int longE, int latN, int latS) {
+        boundLongW = longW;
+        boundLongE = longE;
+        boundLatN = latN;
+        boundLatS = latS;
+
+        root = nullptr;
+        NW = nullptr;
+        NE = nullptr;
+        SW = nullptr;
+        SE = nullptr;
+    }
+
+
+    void insert(Node* node){
+        // Check if node null
+        if (node == nullptr){
+            return;
+        }
+
+        // Check if within bounds. Return if outside bounds
+        if ((node->pos.lon > boundLongE) || (node->pos.lon < boundLongW) || (node->pos.lat > boundLatN) || (node->pos.lat < boundLatS))
+            return;
+
+        // check if right side
+        if (node->pos.lon > ((boundLongW + boundLongE)/2)) {
+            // check if top right
+            if (node->pos.lat > ((boundLatS + boundLatN)/2)) {
+                // node is top right
+            }
+            else {
+                // node is bottom right
+            }
+        }
+        // node is left side
+        else {
+            // check if top left
+            if (node->pos.lat > ((boundLatS + boundLatN)/2)) {
+                // node is top left
+            }
+            else {
+                // node is bottom left
+            }
+        }
+
+    }
+
 };
 
 // TODO: isPrime and nextPrime code taken from Assignment 2 code
