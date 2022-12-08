@@ -424,16 +424,28 @@ public:
                 while(getline(iss, element, div)){
                     elements.push_back(element);
                 }
+
+                // If the Coordinates are "Unknown" or blank, skip
+                if (elements[7] == "Unknown" || elements[8] == "Unknown") {
+                    offset++;
+                    continue;
+                }
+
+                if (elements[7].empty() || elements[8].empty()) {
+                    offset++;
+                    continue;
+                }
+
                 int Long = (
-                        (stoi(elements[8].substr(0,3)) * 3600) +
-                        (stoi(elements[8].substr(3,2))) * 60 +
-                        (stoi(elements[8].substr(5,2)))
-                        );
+                        (stoi(elements[8].substr(0, 3)) * 3600) +
+                        (stoi(elements[8].substr(3, 2))) * 60 +
+                        (stoi(elements[8].substr(5, 2)))
+                );
                 int Lat = (
-                        (stoi(elements[7].substr(0,2)) * 3600) +
-                        (stoi(elements[7].substr(2,2))) * 60 +
-                        (stoi(elements[7].substr(4,2)))
-                        );
+                        (stoi(elements[7].substr(0, 2)) * 3600) +
+                        (stoi(elements[7].substr(2, 2))) * 60 +
+                        (stoi(elements[7].substr(4, 2)))
+                );
                 if (elements[8][7] == 'W')
                     Long *= -1;
                 if (elements[7][6] == 'S')
@@ -451,7 +463,7 @@ public:
                         CommandProcessor::maxProbe = probe;
 
                     // Insert into quad tree
-                    quad.insert({Long,Lat, offset});
+                    quad.insert({Long,Lat, offset-1});
 //                    cout << quad.search({Long, Lat}) << endl;
                 }
 
@@ -464,7 +476,7 @@ public:
         if (offset == 0)
             Logger::log("Average Name Length: " + to_string(0));
         else
-            Logger::log("Average Name Length: " + to_string(totalNameLength/offset));
+            Logger::log("Average Name Length: " + to_string(totalNameLength/(offset-1)));
     }
 
     static void debug(const vector<string>& line){
