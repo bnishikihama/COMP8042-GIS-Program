@@ -67,77 +67,108 @@ class NameIndex {
 class CoordinateIndex {
 
 };
+
 struct Point {
-    int lon;
-    int lat;
-    Point(int _lon, int _lat) {lon = _lon; lat = _lat;}
-    Point() {lon = 0; lat = 0;}
+    int lon = -1;
+    int lat = -1;
+    int offset = -1;
 };
 
-struct Node{
-    // its children. none or 4
-    vector<Node> children;
-    // offset on file here, duplicates here too
+struct QuadTree {
+    bool leaf = false;
+    Point p;
+    Point min, max, centerL, centerR;
     vector<int> offsets;
-    Point pos;
-    explicit Node(Point position) {pos = position;}
-};
+//    vector<Point> children;
+//    const int max_node = 4;
 
-class QuadTree {
-    Node* root;
-    int boundLongW, boundLongE, boundLatN, boundLatS;
-    const int max_node = 4;
-    QuadTree* NW;
-    QuadTree* NE;
-    QuadTree* SW;
-    QuadTree* SE;
+    QuadTree *NW = nullptr;
+    QuadTree *NE = nullptr;
+    QuadTree *SW = nullptr;
+    QuadTree *SE = nullptr;
 
-public:
-    QuadTree(int longW, int longE, int latN, int latS) {
-        boundLongW = longW;
-        boundLongE = longE;
-        boundLatN = latN;
-        boundLatS = latS;
-
-        root = nullptr;
-        NW = nullptr;
-        NE = nullptr;
-        SW = nullptr;
-        SE = nullptr;
+    QuadTree(Point newMin, Point newMax, int of = -1) : min(newMin), max(newMax){
+//        min = newMin;
+//        max = newMax;
+        offsets.push_back(of);
+        centerL.lat = (min.lat + max.lat)/2;
+        centerL.lon = (min.lon + max.lon)/2;
+        centerR.lat = (min.lat + max.lat)/2 + 1;
+        centerR.lon = (min.lon + max.lon)/2 + 1;
     }
 
+    bool checkBoundary(Point p) const{
+        if ((min.lon <= p.lon) &&
+            (min.lat <= p.lat) &&
+            (max.lon >= p.lon) &&
+            (max.lat >= p.lat))
+            return true;
+        return false;
+    }
 
-    void insert(Node* node){
-        // Check if node null
-        if (node == nullptr){
+    void insert(Point p){
+        // Check if this node is a leaf
+        if (!leaf){
+            // check it does not have children
+                if (!NW && !NE && !SW && !SE) {
+                    leaf = true;
+                    this->p = p;
+                    return;
+                }
+        }
+
+        // If duplicate, add to list of duplicates
+        if (p.lat == this->p.lat && p.lon == this->p.lon){
+            this->offsets.push_back(p.offset);
             return;
         }
 
-        // Check if within bounds. Return if outside bounds
-        if ((node->pos.lon > boundLongE) || (node->pos.lon < boundLongW) || (node->pos.lat > boundLatN) || (node->pos.lat < boundLatS))
-            return;
+        // No longer a leaf. Set false
+        leaf = false;
+        // Splitting QuadTree. Set new quadrants
+        if (!NW && !NE && !SW && !SE) {
+            NW = new QuadTree({min.lon, centerR.lat}, {centerL.lon, max.lat});
+            NE = new QuadTree({centerR.lon, centerR.lat}, {max.lon, max.lat});
+            SW = new QuadTree({min.lon, min.lat}, {centerL.lon, centerL.lat});
+            SE = new QuadTree({centerR.lon, min.lat}, {max.lon, centerL.lat});
 
-        // check if right side
-        if (node->pos.lon > ((boundLongW + boundLongE)/2)) {
-            // check if top right
-            if (node->pos.lat > ((boundLatS + boundLatN)/2)) {
-                // node is top right
-            }
-            else {
-                // node is bottom right
-            }
+            // Insert old point before new point
+            if (NW->checkBoundary(this->p))
+                NW->insert(this->p);
+            if (NE->checkBoundary(this->p))
+                NE->insert(this->p);
+            if (SW->checkBoundary(this->p))
+                SW->insert(this->p);
+            if (SE->checkBoundary(this->p))
+                SE->insert(this->p);
         }
-        // node is left side
-        else {
-            // check if top left
-            if (node->pos.lat > ((boundLatS + boundLatN)/2)) {
-                // node is top left
-            }
-            else {
-                // node is bottom left
-            }
-        }
+        // Insert new point
+        if (NW->checkBoundary(p))
+            NW->insert(p);
+        if (NE->checkBoundary(p))
+            NE->insert(p);
+        if (SW->checkBoundary(p))
+            SW->insert(p);
+        if (SE->checkBoundary(p))
+            SE->insert(p);
+    }
 
+    bool search(Point p) const{
+        if (leaf) {
+            if (this->p.lat == p.lat && this->p.lon == p.lon)
+                return true;
+            else
+                return false;
+        }
+        if (NW->checkBoundary(p))
+            return NW->search(p);
+        if (NE->checkBoundary(p))
+            return NE->search(p);
+        if (SW->checkBoundary(p))
+            return SW->search(p);
+        if (SE->checkBoundary(p))
+            return SE->search(p);
+        return false;
     }
 
 };
@@ -177,14 +208,14 @@ public:
     }
 
     void printTable(){
-        int count = 0;
-        for (auto & element : array){
-            if (element.isActive){
-                count++;
-                cout << (element.element + ": " + to_string(element.value)) << endl;
+        Logger::log("Current Table Size: " + to_string(array.size()));
+        Logger::log("Number of Elements in the table: " + to_string(currentSize) + "\n");
+        for (int i = 0; i < array.size(); i++){
+            if (array[i].isActive){
+                Logger::log('\t' + to_string(i) + ": [" +
+                            array[i].element + ": [" + to_string(array[i].value-1) + "]]");
             }
         }
-        cout << count;
     }
 
     void makeEmpty() {
@@ -354,7 +385,7 @@ public:
         Logger::log(result);
     }
 
-    static void import(const vector<string>& command){
+    static void import(const vector<string>& command, QuadTree quad){
         fstream import;
         fstream db;
         string line;
@@ -365,6 +396,7 @@ public:
         vector<string> elements;
         int probe;
         unsigned int totalNameLength = 0;
+
 
         import.open(command[1], ios::in);
         db.open(Logger::dbPath, ios::app);
@@ -412,11 +444,15 @@ public:
                     db << line << endl;
                     offset++;
 
-                    // CAUSES exit code -1073741676 (0xC0000094)
                     totalNameLength += elements[1].length();
+                    // Insert into hash table
                     probe = hashTable.insert(elements[1] + elements[3], offset-1);
                     if (probe > maxProbe)
                         CommandProcessor::maxProbe = probe;
+
+                    // Insert into quad tree
+                    quad.insert({Long,Lat, offset});
+//                    cout << quad.search({Long, Lat}) << endl;
                 }
 
             }
@@ -431,8 +467,17 @@ public:
             Logger::log("Average Name Length: " + to_string(totalNameLength/offset));
     }
 
-    static string debug(const vector<string>& line){
-        return "";
+    static void debug(const vector<string>& line){
+        if (line[1] == "quad") {
+            return;
+        }
+        else if (line[1] == "hash") {
+            CommandProcessor::hashTable.printTable();
+        }
+        else if (line[1] == "pool") {
+            return;
+        }
+        else return;
     }
     static string quit(const vector<string>& line){
         return "";
@@ -498,21 +543,32 @@ public:
                 if (line[0] == ';' || line.empty())
                     continue;
 
+
                 command = CommandProcessor::getCommand(line);
                 if (command[0] == "world")
                     CommandProcessor::world(command);
-                else if (command[0] == "import")
-                    CommandProcessor::import(command);
+
+                else if (command[0] == "import") {
+                    auto *quad = new QuadTree({CommandProcessor::westLong,CommandProcessor::southLat},
+                                              {CommandProcessor::eastLong,CommandProcessor::northLat});
+                    CommandProcessor::import(command, *quad);
+                }
+
                 else if (command[0] == "debug")
                     CommandProcessor::debug(command);
+
                 else if (command[0] == "quit")
                     CommandProcessor::quit(command);
+
                 else if (command[0] == "what_is_at")
                     CommandProcessor::what_is_at(command);
+
                 else if (command[0] == "what_is")
                     CommandProcessor::what_is(command);
+
                 else if (command[0] == "what_is_in")
                     CommandProcessor::what_is_in(command);
+
                 else
                     Logger::log("Command not found error");
             }
@@ -521,10 +577,6 @@ public:
     }
 };
 
-
-struct DMS {
-
-};
 
 int main(int argc, char* argv[]){
     if (argc != 4)
@@ -538,6 +590,5 @@ int main(int argc, char* argv[]){
     SystemManager system(db, script);
     system.readScript();
     Logger::stop();
-    CommandProcessor::hashTable.printTable();
     return 0;
 }
